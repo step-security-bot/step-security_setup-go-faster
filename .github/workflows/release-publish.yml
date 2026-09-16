@@ -1,0 +1,49 @@
+name: release-publish
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ vars.RELEASER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
+          permission-contents: write
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ steps.app-token.outputs.token }}
+      - name: git config
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          git config --local user.name "$GITHUB_ACTOR"
+          git config --local user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+      - name: release-train
+        id: release
+        uses: WillAbides/release-train@7b56e55e8afcd6a40c2c84122ba73e306a559ae0 # v3.9.0
+        with:
+          create-release: true
+          release-refs: main
+          pre-tag-hook: .github/workflows/script/release-pre-tag
+          github-token: ${{ steps.app-token.outputs.token }}
+      - name: Advance major version branch
+        if: steps.release.outputs.created-tag == 'true'
+        env:
+          TAG: ${{ steps.release.outputs.release-tag }}
+        run: .github/workflows/script/advance-major-branch

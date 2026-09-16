@@ -1,0 +1,31 @@
+#!/bin/bash
+#/ release pre-tag hook for release-train:
+#/   1. cross-compile tools/goversion-select for every goos/goarch combo
+#/      that setup-go-faster supports and stage the binaries in
+#/      $ASSETS_DIR so release-train uploads them as release assets;
+#/   2. write $RELEASE_TAG to src/goversion-select.version, commit it, and
+#/      create the release tag locally — release-train picks up the
+#/      hook-created tag and uses it as the release target. The vN major
+#/      branch advances to that commit via advance-major-branch, so
+#/      customers pinning `@vN` get a wrapper that downloads the prebuilt
+#/      release binary.
+#/
+#/ The version file is absent on main and feature branches, so checkouts
+#/ from there (including `uses: ./` in this repo's own CI) build the
+#/ goversion-select binary from source instead of downloading.
+
+set -euo pipefail
+
+: "${ASSETS_DIR:?must be set by release-train}"
+: "${RELEASE_TAG:?must be set by release-train}"
+
+CDPATH="" cd -- "$(dirname -- "$0")/../../.."
+
+.github/workflows/script/cross-compile-goversion-select
+
+ver_file="src/goversion-select.version"
+echo "$RELEASE_TAG" > "$ver_file"
+
+git add "$ver_file"
+git commit -m "release: bake $RELEASE_TAG into $ver_file"
+git tag "$RELEASE_TAG"

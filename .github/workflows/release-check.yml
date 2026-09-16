@@ -1,0 +1,25 @@
+name: release-check
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions: {}
+
+jobs:
+  releasable:
+    name: releasable
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: release-train (check-pr)
+        uses: WillAbides/release-train@7b56e55e8afcd6a40c2c84122ba73e306a559ae0 # v3.9.0
+        with:
+          release-refs: main

@@ -1,0 +1,341 @@
+name: integration
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+permissions:
+  contents: read
+
+jobs:
+  build_goversion_select:
+    name: build goversion-select
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      # bootstrap go via the previous (semver-select-era) release of
+      # setup-go-faster so the cross-compile doesn't depend on the
+      # runner's preinstalled go version.
+      - uses: WillAbides/setup-go-faster@b78d00946efb1fce63dc2e3d89f715a66ca26a0b # v1.17.2
+        with:
+          go-version: '1.26.3'
+      - name: cross-compile
+        run: |
+          mkdir -p ./out
+          ASSETS_DIR="$PWD/out" .github/workflows/script/cross-compile-goversion-select
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: goversion-select-binaries
+          path: ./out/
+          if-no-files-found: error
+          retention-days: 1
+
+  install_go_tip:
+    name: install tip
+    needs: build_goversion_select
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - windows-2025
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: goversion-select-binaries
+          path: ./bin/_staging
+      - name: install goversion-select binary for this platform
+        run: .github/workflows/script/install-goversion-select-from-staging
+      - id: setup_go
+        name: install tip
+        uses: ./
+        with:
+          go-version: tip
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          [[ "$(go version)" == *"devel"* ]]
+  install_go:
+    name: install go
+    needs: build_goversion_select
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-slim
+          - windows-2025
+          - macos-26-intel
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: goversion-select-binaries
+          path: ./bin/_staging
+      - name: install goversion-select binary for this platform
+        run: .github/workflows/script/install-goversion-select-from-staging
+      - id: setup_go_1_15_5
+        name: install 1.15.5
+        uses: ./
+        with:
+          go-version: '1.15.5'
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_15_5.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          [[ "$(go version)" == *"1.15.5"* ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"1.15.5"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"1.15.5"* ]]
+
+
+      - id: setup_go_1_16rc1
+        name: install 1.16rc1
+        uses: ./
+        with:
+          go-version: '1.16rc1'
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_16rc1.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          [[ "$(go version)" == *"1.16rc1"* ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"16rc1"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"16rc1"* ]]
+
+
+      - id: setup_go_all
+        name: install '*'
+        uses: ./
+        with:
+          go-version: '*'
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_all.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+
+
+      - id: setup_go_1_15_5_again
+        name: install 1.15.5 again
+        uses: ./
+        with:
+          go-version: '1.15.x <1.15.6'
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_15_5_again.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          [[ "$(go version)" == *"1.15.5"* ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"1.15.5"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"1.15.5"* ]]
+
+
+      - id: setup_go_1_13_x
+        name: install 1.13.x
+        uses: ./
+        with:
+          go-version: '1.13.x'
+          ignore-local: true
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_13_x.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          [[ "$(go version)" == *"1.13"* ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"1.13"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"1.13"* ]]
+
+      - id: setup_go_1_21
+        name: install 1.21
+        uses: ./
+        with:
+          go-version: '1.21'
+          ignore-local: true
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_21.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          [[ "$(go version)" == *"1.21.0"* ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"1.21.0"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"1.21.0"* ]]
+
+      - id: setup_go_1_21_0
+        name: install 1.21.0
+        uses: ./
+        with:
+          go-version: '1.21.0'
+          ignore-local: true
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_21_0.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          [[ "$(go version)" == *"1.21.0"* ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"1.21.0"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"1.21.0"* ]]
+
+      - id: setup_go_1_26_1
+        name: install 1.26.1
+        uses: ./
+        with:
+          go-version: '1.26.1'
+          ignore-local: true
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_26_1.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          [[ "$(go version)" == *"1.26.1"* ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"1.26.1"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"1.26.1"* ]]
+
+      - name: create_go_mod 1.15
+        run: |
+          mkdir -p tmp/go_mod_1_15
+          cat >> tmp/go_mod_1_15/go.mod << EOF
+          module example.com/some-module
+          
+          go 1.15
+          
+          require (
+            golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691
+            golang.org/x/sync v0.3.0
+          )
+      - id: setup_go_1_15_from_go_mod
+        name: install 1.15 from go.mod
+        uses: ./
+        with:
+          go-version-file: 'tmp/go_mod_1_15/go.mod'
+          ignore-local: true
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_15_from_go_mod.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          requested_min_version='1.15'
+          installed_version="$(go version | cut -d " " -f 3 | tr -d "go")"
+          lowest_version="$(echo -e "$requested_min_version\n$installed_version" | sort -rV | tail -1)"
+
+          [[ "$lowest_version" == "$requested_min_version" ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"$installed_version"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"$installed_version"* ]]
+      - name: create_go_mod 1.21rc1
+        run: |
+          mkdir -p tmp/go_mod_1_21rc1
+          cat >> tmp/go_mod_1_21rc1/go.mod << EOF
+          module example.com/some-module
+          
+          go 1.21rc1
+          
+          require (
+            golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691
+            golang.org/x/sync v0.3.0
+          )
+      - id: setup_go_1_21rc1_from_go_mod
+        name: install 1.21rc1 from go.mod
+        uses: ./
+        with:
+          go-version-file: 'tmp/go_mod_1_21rc1/go.mod'
+          ignore-local: true
+      - name: outputs
+        env:
+          SETUP_OUTPUTS: ${{ toJson(steps.setup_go_1_21rc1_from_go_mod.outputs) }}
+        run: |
+          echo '*********** env ************'
+          env
+          echo '*********** go env ***********'
+          go env
+          echo "$SETUP_OUTPUTS" | jq .
+          go version
+          set -ex
+          requested_min_version='1.21rc1'
+          installed_version="$(go version | cut -d " " -f 3 | tr -d "go")"
+          lowest_version="$(echo -e "$requested_min_version\n$installed_version" | sort -rV | tail -1)"
+
+          [[ "$lowest_version" == "$requested_min_version" ]]
+          [[ "$(jq -r .GOROOT <<< "$SETUP_OUTPUTS")" == *"$installed_version"* ]]
+          [[ "$(jq -r .GOTOOLDIR <<< "$SETUP_OUTPUTS")" == *"$installed_version"* ]]
