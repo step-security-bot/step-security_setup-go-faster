@@ -64,7 +64,7 @@ Setup-go-faster supports these runner systems:
 
 ### A Note About Go 1.21.0
 
-**Use setup-go-faster@v1.9.1 or later** if you want to install Go 1.21.0.
+**Use step-security/setup-go-faster@v1** if you want to install Go 1.21.0.
 
 With the release of go1.21.0, the Go team has changed the way they style
 dot-zero releases. They used to be styled like `go1.N`, but now they are
@@ -163,10 +163,3 @@ output of `go env GOROOT`
 
 output of `go env GOTOOLDIR`
 <!--- end generated --->
-
-[^perf-note]: These results come
-from [speedrun](https://github.com/WillAbides/test-setup-go-faster/blob/main/.github/workflows/speedrun.yml)
-and [speedrun-tip](https://github.com/WillAbides/test-setup-go-faster/blob/main/.github/workflows/speedrun-tip.yml)
-from
-the [WillAbides/test-setup-go-faster](https://github.com/WillAbides/test-setup-go-faster)
-repo.

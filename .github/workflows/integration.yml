@@ -17,20 +17,20 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       # bootstrap go via the previous (semver-select-era) release of
       # setup-go-faster so the cross-compile doesn't depend on the
       # runner's preinstalled go version.
-      - uses: WillAbides/setup-go-faster@b78d00946efb1fce63dc2e3d89f715a66ca26a0b # v1.17.2
+      - uses: ./
         with:
           go-version: '1.26.3'
       - name: cross-compile
         run: |
           mkdir -p ./out
           ASSETS_DIR="$PWD/out" .github/workflows/script/cross-compile-goversion-select
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@v7
         with:
           name: goversion-select-binaries
           path: ./out/
@@ -43,18 +43,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-24.04
-          - windows-2025
+        os: ${{ github.actor == 'dependabot[bot]' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-24.04", "windows-2025"]') }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@v8
         with:
           name: goversion-select-binaries
           path: ./bin/_staging
@@ -83,21 +81,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-24.04
-          - ubuntu-22.04
-          - ubuntu-slim
-          - windows-2025
-          - macos-26-intel
+        os: ${{ github.actor == 'dependabot[bot]' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-24.04", "ubuntu-22.04", "ubuntu-slim", "windows-2025", "macos-26-intel"]') }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@v8
         with:
           name: goversion-select-binaries
           path: ./bin/_staging
