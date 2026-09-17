@@ -32,4 +32,3 @@ if [ "$1" = "--check" ]; then
   exit 0
 fi
 
-script/generate-readme

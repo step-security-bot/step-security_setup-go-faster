@@ -3,10 +3,6 @@ systems:
   - darwin/arm64
   - linux/amd64
 dependencies:
-  action-doc:
-    template: action-doc
-    vars:
-      version: 0.4.0
   shellcheck:
     template: origin#shellcheck
     vars:
@@ -27,24 +23,6 @@ dependencies:
     vars:
       version: 1.25.2
 templates:
-  action-doc:
-    url: https://github.com/WillAbides/action-doc/releases/download/v{{.version}}/action-doc_{{.version}}_{{.os}}_{{.arch}}.tar.gz
-    overrides:
-      - matcher:
-          arch:
-            - arm64
-          os:
-            - darwin
-        dependency:
-          vars:
-            arch: amd64
-    systems:
-      - darwin/amd64
-      - darwin/arm64
-      - linux/386
-      - linux/amd64
-    required_vars:
-      - version
   origin#shellcheck:
     homepage: https://www.shellcheck.net
     description: ShellCheck, a static analysis tool for shell scripts
@@ -119,12 +97,7 @@ templates:
       - linux/amd64
     required_vars:
       - version
-template_sources:
-  action-doc: https://raw.githubusercontent.com/WillAbides/action-doc/main/bindown.yml
-  origin: https://raw.githubusercontent.com/WillAbides/bindown-templates/master/bindown.yml
 url_checksums:
-  https://github.com/WillAbides/action-doc/releases/download/v0.4.0/action-doc_0.4.0_darwin_amd64.tar.gz: 6fcdd45d6a30bf5d17c27b09725fbd4cea5fef96e635abc82c894156207bf9b8
-  https://github.com/WillAbides/action-doc/releases/download/v0.4.0/action-doc_0.4.0_linux_amd64.tar.gz: 7c09a3b9270b4589e11a4f5248e0eb5eb9f5a0126625b5a0675c36554efb76d2
   https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.aarch64.tar.xz: 56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79
   https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.x86_64.tar.xz: 3c89db4edcab7cf1c27bff178882e0f6f27f7afdf54e859fa041fca10febe4c6
   https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
