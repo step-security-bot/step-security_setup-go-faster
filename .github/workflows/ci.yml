@@ -1,0 +1,83 @@
+name: ci
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+permissions:
+  contents: read
+
+jobs:
+  cibuild:
+    name: cibuild
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: script/bootstrap
+      - run: script/generate --check
+      - run: script/lint
+        continue-on-error: true
+
+  build_goversion_select:
+    name: build goversion-select
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # bootstrap go via the previous (semver-select-era) release of
+      # setup-go-faster so the cross-compile doesn't depend on the
+      # runner's preinstalled go version (the go directive in
+      # tools/goversion-select/go.mod requires 1.26.3, which older
+      # preinstalled go rejects).
+      - uses: ./
+        with:
+          go-version: '1.26.3'
+      - name: cross-compile
+        run: |
+          mkdir -p ./out
+          ASSETS_DIR="$PWD/out" .github/workflows/script/cross-compile-goversion-select
+      - uses: actions/upload-artifact@v7
+        with:
+          name: goversion-select-binaries
+          path: ./out/
+          if-no-files-found: error
+          retention-days: 1
+
+  test:
+    name: test
+    needs: build_goversion_select
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ github.actor == 'dependabot[bot]' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-24.04", "ubuntu-22.04", "ubuntu-slim", "windows-2022", "windows-2025", "macos-14", "macos-15", "macos-26", "macos-26-intel"]') }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - run: env
+      - run: go env
+        continue-on-error: true
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: goversion-select-binaries
+          path: ./bin/_staging
+      - name: install goversion-select binary for this platform
+        run: .github/workflows/script/install-goversion-select-from-staging
+      - run: script/bootstrap
+      - run: script/test
+      - run: script/test -long

@@ -1,0 +1,56 @@
+name: Update goreleases pin
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # every Monday at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: update goreleases pin
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+
+      - name: get latest commit SHA
+        id: sha
+        run: |
+          sha="$(curl -fsSL "https://api.github.com/repos/WillAbides/goreleases/commits/main" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            | jq -r '.sha')"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: update pin in src/run
+        id: update
+        run: |
+          current="$(grep -oP '(?<=goreleases/)[0-9a-f]{40}(?=/versions\.txt)' src/run)"
+          new="${{ steps.sha.outputs.sha }}"
+          if [ "$current" = "$new" ]; then
+            echo "already up to date ($current)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            sed -i "s|goreleases/${current}/versions.txt|goreleases/${new}/versions.txt|" src/run
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "old=$current" >> "$GITHUB_OUTPUT"
+            echo "new=$new" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: open pull request
+        if: steps.update.outputs.changed == 'true'
+        uses: step-security/create-pull-request@v7
+        with:
+          branch: update-goreleases-pin
+          commit-message: "chore: pin goreleases to ${{ steps.update.outputs.new }}"
+          title: "chore: update goreleases pin"
+          body: |
+            Pins `WillAbides/goreleases` versions.txt to the latest commit.
+
+            - **Old:** `${{ steps.update.outputs.old }}`
+            - **New:** `${{ steps.update.outputs.new }}`
+          labels: dependencies
