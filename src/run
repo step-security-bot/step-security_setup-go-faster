@@ -23,7 +23,7 @@ CDPATH="" cd -- "$(dirname -- "$0")/.."
 
 . src/lib
 
-VERSIONS_URL="${VERSIONS_URL:-https://raw.githubusercontent.com/WillAbides/goreleases/main/versions.txt}"
+VERSIONS_URL="${VERSIONS_URL:-https://raw.githubusercontent.com/WillAbides/goreleases/d58eb79e423d4a43aecb2981790b1c4ac8b0ac99/versions.txt}"
 
 debug_out starting run
 
